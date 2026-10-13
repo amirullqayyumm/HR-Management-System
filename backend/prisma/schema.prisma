@@ -1,0 +1,179 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ==========================================
+// USER LOGIN AND ROLE-BASED ACCESS CONTROL
+// ==========================================
+
+enum UserRole {
+  HR_ADMIN
+  MANAGER
+  EMPLOYEE
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(EMPLOYEE)
+  employeeId   Int      @unique
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+}
+
+// ==========================================
+// DEPARTMENT
+// ==========================================
+
+model Department {
+  id        Int        @id @default(autoincrement())
+  code      String     @unique
+  name      String
+  positions Position[]
+  employees Employee[]
+}
+
+// ==========================================
+// POSITION
+// ==========================================
+
+model Position {
+  id           Int        @id @default(autoincrement())
+  code         String     @unique
+  name         String
+  departmentId Int
+  department   Department @relation(fields: [departmentId], references: [id])
+  employees    Employee[]
+}
+
+// ==========================================
+// EMPLOYEE
+// ==========================================
+
+model Employee {
+  id           Int      @id @default(autoincrement())
+  employeeNo   String   @unique
+  name         String
+  email        String   @unique
+  joinDate     DateTime
+  departmentId Int
+  positionId   Int
+  status       String   @default("ACTIVE")
+
+  // Department and Position relationships
+  department Department @relation(fields: [departmentId], references: [id])
+  position   Position   @relation(fields: [positionId], references: [id])
+
+  // Employee reporting relationship
+  managerId    Int?
+  manager      Employee?  @relation("EmployeeManager", fields: [managerId], references: [id])
+  subordinates Employee[] @relation("EmployeeManager")
+
+  // Leave Management relationships
+  leaveApplications LeaveApplication[] @relation("EmployeeLeaveApplications")
+  leaveApprovals    LeaveApplication[] @relation("LeaveApprover")
+  leaveBalances     LeaveBalance[]
+
+  // Optional login account
+  user User?
+
+  attendances Attendance[]
+}
+
+// ==========================================
+// LEAVE TYPE
+// ==========================================
+
+model LeaveType {
+  id          Int    @id @default(autoincrement())
+  code        String @unique
+  name        String
+  defaultDays Int    @default(0)
+
+  applications LeaveApplication[]
+  balances     LeaveBalance[]
+}
+
+// ==========================================
+// LEAVE APPLICATION
+// ==========================================
+
+model LeaveApplication {
+  id          Int      @id @default(autoincrement())
+  employeeId  Int
+  leaveTypeId Int
+  startDate   DateTime
+  endDate     DateTime
+  totalDays   Int
+
+  // Tracks whether this application deducted leave balance
+  balanceDeducted Boolean @default(false)
+
+  reason     String?
+  status     String    @default("PENDING")
+  approverId Int?
+  remarks    String?
+  appliedAt  DateTime  @default(now())
+  reviewedAt DateTime?
+
+  // Leave cancellation details
+  cancellationStatus      String    @default("NONE")
+  cancellationReason      String?
+  cancellationRequestedAt DateTime?
+  cancellationReviewedAt  DateTime?
+  cancellationRemarks     String?
+
+  employee  Employee  @relation("EmployeeLeaveApplications", fields: [employeeId], references: [id])
+  leaveType LeaveType @relation(fields: [leaveTypeId], references: [id])
+  approver  Employee? @relation("LeaveApprover", fields: [approverId], references: [id])
+}
+
+// ==========================================
+// LEAVE BALANCE
+// ==========================================
+
+model LeaveBalance {
+  id           Int @id @default(autoincrement())
+  employeeId   Int
+  leaveTypeId  Int
+  year         Int
+  entitledDays Int @default(0)
+  usedDays     Int @default(0)
+
+  employee  Employee  @relation(fields: [employeeId], references: [id])
+  leaveType LeaveType @relation(fields: [leaveTypeId], references: [id])
+
+  @@unique([employeeId, leaveTypeId, year])
+}
+
+
+// ==========================================
+// ATTENDANCE MANAGEMENT
+// ==========================================
+
+model Attendance {
+  id         Int       @id @default(autoincrement())
+  employeeId Int
+  date       DateTime  @db.Date
+  clockIn    DateTime
+  clockOut   DateTime?
+  status     String    @default("PRESENT")
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  // Prevent duplicate attendance records
+  // for the same employee on the same date
+  @@unique([employeeId, date])
+}

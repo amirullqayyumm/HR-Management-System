@@ -1,0 +1,43 @@
+
+# HRMS - Git Ignore Rules
+
+# Dependencies
+node_modules/
+dist/
+dist-ssr/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+!.env.sample
+*.local
+
+# Logs
+logs/
+*.log
+
+# Database backups
+*.dump
+*.backup
+
+# Private keys
+*.pem
+*.key
+*.p12
+*.pfx
+
+# AI assistant reference folders
+/backend/.agents/
+/backend/.claude/
+/backend/.windsurf/
+
+# Temporary files
+tmp/
+uploads/
+
+# Editor files
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
